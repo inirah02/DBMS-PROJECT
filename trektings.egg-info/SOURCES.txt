@@ -1,0 +1,9 @@
+LICENSE
+README.md
+setup.py
+trektings/__init__.py
+trektings.egg-info/PKG-INFO
+trektings.egg-info/SOURCES.txt
+trektings.egg-info/dependency_links.txt
+trektings.egg-info/requires.txt
+trektings.egg-info/top_level.txt

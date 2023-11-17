@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+{% block head %}
+    <title>admin</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Karma">
+    <style>
+body,h1,h2,h3,h4,h5,h6 {font-family: "Karma", sans-serif}
+.w3-bar-block .w3-bar-item {padding:20px}
+    </style>
+{% endblock %}
+{% block body %}
+    <!-- Top menu -->
+    <!-- <div class="w3-top"> <div class="w3-white w3-xlarge" style="max-width:1200px;margin:auto"> -->
+    <!--         <div class="w3-center w3-padding-16">Trek'd</div> -->
+    <!--     </div> -->
+    <!-- </div> -->
+    <!-- !PAGE CONTENT! -->
+    <div>
+        <table>
+            <tr>
+                {% for column in column_names %}<th>{{ column }}</th>{% endfor %}
+            </tr>
+            {% for task in tasks %}
+                <tr>
+                    {% for col_name in column_names %}<td>{{ task[col_name] }}</td>{% endfor %}
+                    <td>
+                        <a href="">Delete</a>
+                        <a href="">Update</a>
+                    </td>
+                </tr>
+            {% endfor %}
+        </table>
+    </div>
+    <div>
+        <a href="admin">Back</a>
+        <a href="/">Home</a>
+    </div>
+{% endblock %}

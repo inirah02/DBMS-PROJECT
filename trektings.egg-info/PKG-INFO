@@ -1,0 +1,7 @@
+Metadata-Version: 2.1
+Name: trektings
+Version: 0.0.0
+License-File: LICENSE
+Requires-Dist: flask
+Requires-Dist: sqlalchemy
+Requires-Dist: mariadb
