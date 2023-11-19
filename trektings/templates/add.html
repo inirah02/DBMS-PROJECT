@@ -18,23 +18,17 @@ body,h1,h2,h3,h4,h5,h6 {font-family: "Karma", sans-serif}
     <!-- </div> -->
     <!-- !PAGE CONTENT! -->
     <div>
-        <table>
-            <tr>
-                {% for column in columns %}<th>{{ column.name }}</th>{% endfor %}
-            </tr>
-            {% for task in tasks %}
-                <tr>
-                    {% for col_name in columns %}<td>{{ task[col_name.name] }}</td>{% endfor %}
-                    <td>
-                        <a href="/admin/delete/{{ table_name }}/{{ task[id_column] }}">Delete</a>
-                        <a href="/admin/update/{{ table_name }}/{{ task[id_column] }}">Update</a>
-                    </td>
-                </tr>
+        <form action={{ table_uri }} method="POST">
+            {% for column in columns %}
+                <p>{{ column.name }}({{ column.type }})</p>
+                <input type="text" name={{ column.name }} required>
+                <br>
             {% endfor %}
-        </table>
+            <input type="submit" value="Add Entry">
+        </form>
     </div>
     <div>
-        <a href="/admin/add/{{ table_name }}">Add</a>
+        <br>
         <a href="/admin">Back</a>
         <a href="/">Home</a>
     </div>

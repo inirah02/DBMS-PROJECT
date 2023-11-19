@@ -1,9 +1,11 @@
 from flask import Flask, render_template, request, redirect
-from flask_sqlalchemy import SQLAlchemy as alc
+from flask_sqlalchemy import SQLAlchemy 
+from sqlalchemy import Table, MetaData, text
+import sys
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://root:Password@127.0.0.1:3306/trek'
-db = alc(app)
+db = SQLAlchemy(app)
 
 class Customer(db.Model):
     __tablename__ = 'customer'
@@ -103,105 +105,138 @@ class Trek_leads(db.Model):
 with app.app_context():
     db.create_all();
 
-@app.route('/', methods=['POST','GET'])
-def index():
-    if request.method == 'POST':
-        task_content = request.form['content']
-        new_task = Customer(firstname=task_content)
+    drop_trigger_sql = "DROP TRIGGER IF EXISTS delete_related_journeys;"
+    db.session.execute(db.text(drop_trigger_sql))
 
-        try:
-            db.session.add(new_task)
-            db.session.commit()
-            return redirect("/")
-        except:
-            return "There was an issue adding your task"
-    else:
-        tasks = Trek_location.query.all()
-        return render_template('index.html',tasks=tasks) 
+    trigger_sql = """
+    CREATE TRIGGER delete_related_journeys
+    BEFORE DELETE ON trek_location
+    FOR EACH ROW
+    BEGIN
+        DELETE FROM journey WHERE journey.location_id = OLD.location_id;
+    END;
+    """
+    db.session.execute(db.text(trigger_sql))
+
+@app.route('/')
+def index():
+    tasks = Trek_location.query.all()
+    return render_template('index.html',tasks=tasks) 
 
 @app.route('/admin')
 def admin():
     return render_template('admin.html') 
 
-@app.route('/location', methods=['POST','GET'])
-def location():
-    if request.method == "POST":
-        pass
-    else:
-        columns = Trek_location.__table__.columns
-        column_names = [column.name for column in columns]
-        tasks = Trek_location.query.all()
-        return render_template('manage.html', tasks=tasks, column_names = column_names) 
+@app.route('/admin/add/<dbtable>', methods=['POST','GET'])
+def create(dbtable):
 
-@app.route('/vehicle', methods=['POST','GET'])
-def vehicle():
-    if request.method == "POST":
-        pass
-    else:
-        columns = Vehicle.__table__.columns
-        column_names = [column.name for column in columns]
-        tasks = Vehicle.query.all()
-        return render_template('manage.html', tasks=tasks, column_names = column_names) 
+    table_name = dbtable.capitalize()
+    try:
+        model_class=getattr(sys.modules[__name__],table_name)
+    except:
+        return 'There was an error deleting that task'
 
-@app.route('/driver', methods=['POST','GET'])
-def driver():
     if request.method == "POST":
-        pass
-    else:
-        columns = Driver.__table__.columns
+        columns = model_class.__table__.columns
         column_names = [column.name for column in columns]
-        tasks = Driver.query.all()
-        return render_template('manage.html', tasks=tasks, column_names = column_names) 
+        task_values=[]
+        form_data_types = {
+            int: int,
+            str: str,
+            bool: bool,
+            float: float
+        }
 
-@app.route('/leads', methods=['POST','GET'])
-def leads():
-    if request.method == "POST":
-        pass
-    else:
-        columns = Trek_leads.__table__.columns
-        column_names = [column.name for column in columns]
-        tasks = Trek_leads.query.all()
-        return render_template('manage.html', tasks=tasks, column_names = column_names) 
+        for i in range(len(column_names)):
+            column = columns[i]
+            column_name = column_names[i]
+            form_value = request.form[column_name]
 
-@app.route('/homestay', methods=['POST','GET'])
-def homestay():
-    if request.method == "POST":
-        pass
-    else:
-        columns = Homestay.__table__.columns
-        column_names = [column.name for column in columns]
-        tasks = Homestay.query.all()
-        return render_template('manage.html', tasks=tasks, column_names = column_names) 
+            if column.type.python_type in form_data_types:
+                converted_value = form_data_types[column.type.python_type](form_value)
+            else:
+                converted_value = form_value  
 
-@app.route('/customer', methods=['POST','GET'])
-def customer():
-    if request.method == "POST":
-        pass
-    else:
-        columns = Customer.__table__.columns
-        column_names = [column.name for column in columns]
-        tasks = Customer.query.all()
-        return render_template('manage.html', tasks=tasks, column_names = column_names) 
+            task_values.append(converted_value)
 
-@app.route('/journey', methods=['POST','GET'])
-def journey():
-    if request.method == "POST":
-        pass
-    else:
-        columns = Journey.__table__.columns
-        column_names = [column.name for column in columns]
-        tasks = Journey.query.all()
-        return render_template('manage.html', tasks=tasks, column_names = column_names) 
+        kwargs = dict(zip(column_names, task_values))
+        new_task = model_class(**kwargs)
 
-@app.route('/booking', methods=['POST','GET'])
-def booking():
-    if request.method == "POST":
-        pass
+        try:
+            db.session.add(new_task)
+            db.session.commit()
+            redirect_uri = '/admin/' + dbtable
+            return redirect(redirect_uri)
+        except Exception as e:
+            print(f"Error: {e}")
+            return "There was an error adding your entry. Try again"
     else:
-        columns = Booking.__table__.columns
+        columns = model_class.__table__.columns
+        return render_template('add.html', columns = columns, table_uri=dbtable) 
+
+@app.route('/admin/<dbtable>')
+def read(dbtable):
+
+    table_name = dbtable.capitalize()
+    try:
+        model_class=getattr(sys.modules[__name__],table_name)
+    except:
+        return 'There was an error'
+
+    columns = model_class.__table__.columns
+    id_column = columns[0].name.strip()
+    tasks = model_class.query.all()
+    return render_template('manage.html', table_name=dbtable, tasks=tasks, columns = columns, id_column=id_column) 
+
+@app.route('/admin/update/<dbtable>/<int:id>', methods=['POST','GET'])
+def update(id,dbtable):
+    table_name = dbtable.capitalize()
+    try:
+        model_class=getattr(sys.modules[__name__],table_name)
+    except:
+        return 'There was an error deleting that task'
+    
+    task_to_update = model_class.query.get_or_404(id)
+    
+    if request.method == "POST":
+        columns = model_class.__table__.columns
         column_names = [column.name for column in columns]
-        tasks = Booking.query.all()
-        return render_template('manage.html', tasks=tasks, column_names = column_names) 
+        for column_name in column_names:
+            if column_name == 'status':
+                setattr(task_to_update, column_name, 1)
+            else:
+                setattr(task_to_update, column_name, request.form[column_name])
+        try:
+            db.session.commit()
+            redirect_uri = '/admin/' + dbtable
+            return redirect(redirect_uri)
+        except Exception as e:
+            print(f"Error: {e}")
+            return "There was an error adding your entry. Try again"
+    else:
+        columns = model_class.__table__.columns
+        return render_template('update.html',task_to_update=task_to_update, columns = columns, table_uri=dbtable) 
+
+@app.route('/admin/delete/<dbtable>/<int:id>')
+def delete(id,dbtable):
+
+    table_name = dbtable.capitalize()
+    try:
+        model_class=getattr(sys.modules[__name__],table_name)
+    except:
+        return 'There was an error deleting that task'
+
+    task_to_delete = model_class.query.get_or_404(id)
+
+    try:
+        db.session.delete(task_to_delete) 
+        db.session.commit()
+        redirect_uri = '/admin/' + dbtable
+        return redirect(redirect_uri)
+    except Exception as e:
+        print(f"Error: {e}")
+        return "There was an error adding your entry. Try again"
+
 
 if __name__ == "__main__":
     app.run(debug=True)

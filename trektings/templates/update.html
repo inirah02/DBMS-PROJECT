@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+{% block head %}
+    <title>admin</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="stylesheet" href="https://www.w3schools.com/w3css/4/w3.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Karma">
+    <style>
+body,h1,h2,h3,h4,h5,h6 {font-family: "Karma", sans-serif}
+.w3-bar-block .w3-bar-item {padding:20px}
+    </style>
+{% endblock %}
+{% block body %}
+    <div>
+        <form action="" method="POST">
+            {% for column in columns %}
+                <p>{{ column.name }}({{ column.type }})</p>
+                <input type="text" name={{ column.name }} value={{ task_to_update[column.name] }} required>
+                <br>
+            {% endfor %}
+            <input type="submit" value="Update">
+        </form>
+    </div>
+    <div>
+        <br>
+        <a href="/admin">Back</a>
+        <a href="/">Home</a>
+    </div>
+{% endblock %}
